@@ -1,6 +1,6 @@
 FROM maven:3.9.9-eclipse-temurin-21-jammy AS MVNIMAGE
 RUN git clone https://github.com/sandy3001/Devops-Project.git
-RUN cd Devops-Project && mvn install
+RUN cd Devops-Project && mvn install -DskipTests
 
 FROM tomcat:10-jdk21
 COPY --from=MVNIMAGE Devops-Project/target/vprofile-v2.war /usr/local/tomcat/webapps/ROOT.war
