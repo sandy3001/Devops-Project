@@ -4,8 +4,9 @@ metadata:
   name: db01
   namespace: prod
 spec:
-  clusterIP: None
   selector:
     app: vprodb
+  type: ClusterIP
   ports:
   - port: 3306
+    targetPort: 3306
