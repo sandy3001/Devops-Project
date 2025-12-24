@@ -4,7 +4,7 @@ metadata:
   name: vproarmq01
   namespace: devops-project
   labels:
-    app: vproarmq
+    app: vproarmq01
 spec:
   replicas: 1
   selector:
