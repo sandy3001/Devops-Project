@@ -43,7 +43,7 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /
+              path: /login
               port: 8080
             initialDelaySeconds: 90
             periodSeconds: 10
@@ -52,7 +52,7 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /
+              path: /login
               port: 8080
             initialDelaySeconds: 180
             periodSeconds: 20
