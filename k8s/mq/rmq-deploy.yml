@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vproarmq
+  name: vproarmq01
   namespace: devops-project
   labels:
     app: vproarmq
