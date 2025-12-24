@@ -6,5 +6,6 @@ metadata:
 spec:
   selector:
     app: vprormq
+  type: ClusterIP
   ports:
   - port: 5672
