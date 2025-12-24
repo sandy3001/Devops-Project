@@ -5,7 +5,7 @@ metadata:
   namespace: devops-project
 spec:
   selector:
-    app: vproarmq 
+    app: vproarmq01
   type: ClusterIP
   ports:
     - port: 5672
