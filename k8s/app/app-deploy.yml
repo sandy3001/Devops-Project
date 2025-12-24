@@ -24,7 +24,7 @@ spec:
           command: ['sh', '-c', 'until nc -zv vprocache01 11211; do sleep 2; done']
         - name: check-vpromq01
           image: busybox
-          command: ['sh', '-c', 'until nc -zv vpromq01 5672; do sleep 2; done']
+          command: ['sh', '-c', 'until nc -zv vprormq01 5672; do sleep 2; done']
 
       containers:
         - name: vproapp
