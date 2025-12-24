@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vproapp
+  namespace: devops-project
 spec:
   replicas: 1   # HPA will control replicas
   selector:

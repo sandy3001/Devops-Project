@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: vpro-ingress
+  namespace: devops-project
   labels:
     name: vpro-ingress
 

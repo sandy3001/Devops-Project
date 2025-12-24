@@ -2,6 +2,7 @@ piVersion: apps/v1
 kind: Deployment
 metadata:
   name: vprodb
+  namespace: devops-project
   labels:
     app: vprodb
 spec:

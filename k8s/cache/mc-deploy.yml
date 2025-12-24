@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
-  name: vpromc
+metadata:
+  name: vprocache01
+  namespace: devops-project
 spec:
   replicas: 1
   selector:
