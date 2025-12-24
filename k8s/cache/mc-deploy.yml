@@ -7,14 +7,15 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: vpromc 
+      app: vpromc
+  template:
     metadata:
       labels:
-        app: vpromc 
+        app: vpromc
     spec:
       containers:
-        - name: vpromc 
-          image: sansv/mc-webapp-project
-          ports:
-            - name: vpromc-port  
-              containerPort: 11211
+      - name: vpromc
+        image: sansv/mc-webapp-project
+        ports:
+        - name: vpromc-port
+          containerPort: 11211
