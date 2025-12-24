@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vproapp
+  namespace: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vproapp
+  template:
+    metadata:
+      labels:
+        app: vproapp
+    spec:
+      serviceAccountName: vpro-sa
+      initContainers:
+      - name: wait-db
+        image: busybox
+        command: ['sh','-c','until nc -z vprodb 3306; do sleep 2; done']
+      - name: wait-mc
+        image: busybox
+        command: ['sh','-c','until nc -z vprocache01 11211; do sleep 2; done']
+      - name: wait-rmq
+        image: busybox
+        command: ['sh','-c','until nc -z vpromq01 5672; do sleep 2; done']
+
+      containers:
+      - name: vproapp
+        image: sansv/tomcat-webapp-project
+        ports:
+        - containerPort: 8080
+
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10

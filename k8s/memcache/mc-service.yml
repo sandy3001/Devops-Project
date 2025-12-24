@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc01
+  namespace: prod
+spec:
+  selector:
+    app: vpromc
+  ports:
+  - port: 11211
