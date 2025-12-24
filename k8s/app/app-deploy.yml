@@ -16,13 +16,13 @@ spec:
       terminationGracePeriodSeconds: 60
 
       initContainers:
-        - name: check-vprodb
+        - name: check-db
           image: busybox
           command: ['sh', '-c', 'until nc -zv vprodb 3306; do sleep 2; done']
-        - name: check-vprocache01
+        - name: check-cache
           image: busybox
           command: ['sh', '-c', 'until nc -zv vprocache01 11211; do sleep 2; done']
-        - name: check-vpromq01
+        - name: check-mq
           image: busybox
           command: ['sh', '-c', 'until nc -zv vprormq01 5672; do sleep 2; done']
 
@@ -30,31 +30,33 @@ spec:
         - name: vproapp
           image: sansv/tomcat-app-image:v1
           ports:
-            - name: vproapp-port
-              containerPort: 8080
+            - containerPort: 8080
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: 100m
+              memory: 128Mi
             limits:
-              cpu: "500m"
-              memory: "256Mi"
+              cpu: 500m
+              memory: 256Mi
+
+          startupProbe:
+            httpGet:
+              path: /login
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
 
           readinessProbe:
             httpGet:
               path: /login
               port: 8080
-            initialDelaySeconds: 90
+            initialDelaySeconds: 60
             periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 6
 
           livenessProbe:
             httpGet:
               path: /login
               port: 8080
-            initialDelaySeconds: 180
+            initialDelaySeconds: 120
             periodSeconds: 20
-            timeoutSeconds: 2
-            failureThreshold: 5
