@@ -2,17 +2,19 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: vpro-ingress
-  namespace: prod
+  labels:
+    name: vpro-ingress
+
 spec:
-  ingressClassName: nginx
+  ingressClassName: nginx  # Specifies that this Ingress should be handled by the NGINX Ingress Controller
   rules:
-  - host: reva.sandysanj.site
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: vproapp
-            port:
-              number: 8080
+    - host: reva.sandysanj.site
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: vproapp  # Ensure this matches the actual Service name
+                port:
+                  number: 8080

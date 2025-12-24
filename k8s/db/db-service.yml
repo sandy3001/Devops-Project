@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: db01
-  namespace: prod
+  name: vprodb  # Same as in app.prop
 spec:
   selector:
     app: vprodb
   type: ClusterIP
   ports:
-  - port: 3306
-    targetPort: 3306
+    - port: 3306
+      targetPort: vprodb-port  # Named port defined in the Deployment
+      protocol: TCP

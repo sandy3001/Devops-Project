@@ -2,13 +2,12 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: vproapp-hpa
-  namespace: prod
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
     name: vproapp
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 5
   metrics:
   - type: Resource

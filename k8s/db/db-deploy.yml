@@ -1,0 +1,42 @@
+piVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vprodb
+  labels:
+    app: vprodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vprodb
+  template:
+    metadata:
+      labels:
+        app: vprodb
+    spec:
+      initContainers:
+        - name: delete-lost-found
+          image: busybox
+          command: ["sh", "-c", "rm -rf /var/lib/mysql/lost+found"]
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: vpro-db-data
+      containers:
+        - name: vprodb
+          image: sansv/db-webapp-project
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: vpro-db-data
+          ports:
+            - name: vprodb-port
+              containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: db-pass
+      volumes:
+        - name: vpro-db-data
+          persistentVolumeClaim:
+            claimName: db-pvc-claim
