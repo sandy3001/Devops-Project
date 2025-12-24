@@ -4,7 +4,7 @@ metadata:
   name: vproapp
   namespace: devops-project
 spec:
-  replicas: 1   # HPA will control replicas
+  replicas: 1
   selector:
     matchLabels:
       app: vproapp
@@ -13,6 +13,8 @@ spec:
       labels:
         app: vproapp
     spec:
+      terminationGracePeriodSeconds: 60
+
       initContainers:
         - name: check-vprodb
           image: busybox
@@ -38,3 +40,21 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 180
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 5
