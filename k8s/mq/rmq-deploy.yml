@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        app: vproarmq
+        app: vproarmq01
     spec:
       containers:
         - name: vproarmq
@@ -28,5 +28,5 @@ spec:
                   name: app-secret
                   key: rmq-pass
             - name: RABBITMQ_DEFAULT_USER
-              value: "guest"
+              value: "test"
 
