@@ -1,0 +1,208 @@
+#!/bin/bash
+# ==========================================
+# Automated Oracle Linux 7.x Patching Script
+# ==========================================
+
+# === COLORS ===
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log()  { echo -e "[$(date '+%F %T')] $1"; }
+pass() { echo -e "${GREEN}PASS${NC} :: $1"; }
+fail() { echo -e "${RED}FAIL${NC} :: $1"; }
+warn() { echo -e "${YELLOW}WARN${NC} :: $1"; }
+
+# === 1. Check if Oracle Linux and version ===
+check_os() {
+  if [[ -f /etc/oracle-release ]]; then
+    os_version=$(awk '{print $5}' /etc/oracle-release | cut -d. -f1)
+    if [[ "$os_version" == "7" ]]; then
+      pass "Oracle Linux 7.x detected – safe to continue"
+    else
+      fail "This system is Oracle Linux ${os_version}.x – patching allowed only for OEL 7.x!"
+      exit 1
+    fi
+  else
+    fail "This is NOT Oracle Linux. Wrong workplan!"
+    exit 1
+  fi
+  sleep 3
+}
+
+# === 2. Verify RPM functionality ===
+check_rpm() {
+  log "Verifying RPM database..."
+  if rpm -qa > /dev/null 2>&1; then
+    pass "RPM database is healthy"
+  else
+    fail "RPM database is corrupt or not responding"
+    exit 1
+  fi
+  sleep 3
+}
+
+# === 3. Remove rpmnew/rpmsave files ===
+clean_rpm_files() {
+  log "Cleaning leftover .rpmnew/.rpmsave files..."
+  find /etc -name "*.rpmnew" -o -name "*.rpmsave" -exec rm -f {} \;
+  pass "Cleaned rpmnew/rpmsave files"
+  sleep 3
+}
+
+# === 4. Check /boot space ===
+check_boot_space() {
+  log "Checking /boot space..."
+  local boot_space
+  boot_space=$(df -m /boot | awk 'NR==2 {print $4}')
+  if [[ $boot_space -lt 75 ]]; then
+    warn "/boot has only ${boot_space}MB free. Running kernel cleanup..."
+    if [[ -f /usr/local/bin/kernel_cleanup.sh ]]; then
+      /usr/local/bin/kernel_cleanup.sh -y --purge
+    else
+      fail "Kernel cleanup script not found! Please clean manually."
+      exit 1
+    fi
+  else
+    pass "/boot space is ${boot_space}MB (OK)"
+  fi
+  sleep 3
+}
+
+# === 4A. Check overall disk space ===
+check_disk_space() {
+  log "Checking overall filesystem space..."
+  local rootsize varsize tmpsize
+  rootsize=$(df -m / | awk 'NR==2 {print $4}')
+  varsize=$(df -m /var | awk 'NR==2 {print $4}' 2>/dev/null || echo 0)
+  tmpsize=$(df -m /tmp | awk 'NR==2 {print $4}' 2>/dev/null || echo 0)
+
+  [[ $rootsize -lt 1024 ]] && warn "/ filesystem only ${rootsize}MB free!"
+  [[ $varsize -lt 1024 ]] && warn "/var filesystem only ${varsize}MB free!"
+  [[ $tmpsize -lt 512 ]] && warn "/tmp filesystem only ${tmpsize}MB free!"
+
+  if [[ $rootsize -lt 512 || $varsize -lt 512 ]]; then
+    fail "Insufficient disk space (<512MB) in root or /var. Please clean before upgrade!"
+    df -h
+    exit 1
+  fi
+
+  pass "Sufficient disk space available"
+  sleep 3
+}
+
+# === 4B. Check filesystem utilization (stop if >=80%) ===
+check_fs_usage() {
+  log "Checking filesystem utilization..."
+  local high_usage=false
+
+  while read -r fs size used avail usep mount; do
+    use_pct=${usep%\%}
+    if (( use_pct >= 80 )); then
+      warn "Filesystem $mount usage is ${usep} (≥80%)"
+      high_usage=true
+    else
+      pass "Filesystem $mount usage is ${usep} (OK)"
+    fi
+  done < <(df -hP | awk 'NR>1 && $1 !~ /(tmpfs|overlay)/')
+
+  if $high_usage; then
+    fail "One or more filesystems are above 80% usage. Please free space before patching!"
+    df -h
+    exit 1
+  fi
+
+  pass "All filesystems are below 80% usage"
+  sleep 3
+}
+
+# === 5. Cleanup old repo definitions ===
+clean_repos() {
+  log "Cleaning old yum repos..."
+  yum clean all
+  rm -rf /var/cache/yum/*
+  cd /etc/yum.repos.d || exit 1
+  rm -f ol7.*patchset*.repo
+  yum -y erase oraclelinux-release-el7 || true
+  yum makecache
+  yum repolist all
+  pass "Repository cleanup complete"
+  sleep 3
+}
+
+# === 6. Add latest repo ===
+add_latest_repo() {
+  log "Adding latest OL7.9 repo definition..."
+
+  if ! wget -q https://taspmokcoraclerepo.cernerasp.com/yum/repos/OL_packages/OL7/7.9/wkly/ol7.9_patchset_currentweek_CTC.repo \
+       -O /etc/yum.repos.d/ol7_patchset.repo; then
+    fail "Failed to fetch OL7.9 repo file from remote server"
+    echo "Log hint: Check network/DNS and /var/log/messages"
+    exit 1
+  fi
+
+  yum repolist all
+  pass "Latest repo added"
+  sleep 3
+}
+
+# === 7. Perform update with retry logic ===
+perform_update() {
+  log "Checking for available updates..."
+  yum check-update || true
+
+  log "Starting yum upgrade..."
+  if ! yum upgrade -y \
+      --enablerepo=ol7_x86_64_oracle \
+      --exclude="java*" \
+      --exclude="rssh" \
+      --exclude="oracle-instantclient*" \
+      --exclude="gluster*" \
+      --exclude="zabbix*"; then
+
+    if grep -qi "No space left on device" /var/log/yum.log 2>/dev/null; then
+      fail "Yum failed due to insufficient space. Cleaning cache and retrying..."
+      yum clean all
+      rm -rf /var/cache/yum/*
+      df -h
+      log "Retrying yum upgrade..."
+      yum upgrade -y || fail "Retry also failed due to space issue."
+    else
+      fail "Yum upgrade failed during package upgrade phase"
+      echo "Yum logs:"
+      echo "  → /var/log/yum.log"
+      echo "  → /var/log/messages"
+      echo
+      echo "Last 30 lines from /var/log/yum.log:"
+      tail -n 30 /var/log/yum.log 2>/dev/null || echo "yum.log not found"
+      exit 1
+    fi
+  fi
+
+  pass "System upgraded successfully"
+  sleep 3
+}
+
+# === 8. Verify kernel entry ===
+verify_kernel() {
+  log "Verifying grub entry..."
+  grubby --info=DEFAULT || warn "Unable to verify grub entry."
+  sleep 3
+}
+
+# === MAIN EXECUTION ===
+log "===== Starting Automated Patching Process ====="
+
+check_os
+check_rpm
+clean_rpm_files
+check_boot_space
+check_disk_space
+check_fs_usage
+clean_repos
+add_latest_repo
+perform_update
+verify_kernel
+
+pass "===== Patching Completed Successfully ====="
