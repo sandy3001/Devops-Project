@@ -1,0 +1,6 @@
+patch_script_path: /usr/local/bin/patch.sh
+backup_dir: /opt/patch-backup
+tomcat_service: tomcat
+tomcat_home: /opt/tomcat
+max_retries: 3
+retry_delay: 10
