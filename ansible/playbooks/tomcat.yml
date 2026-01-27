@@ -1,0 +1,6 @@
+- name: Install and configure Tomcat
+  hosts: app
+  gather_facts: yes
+
+  roles:
+    - tomcat

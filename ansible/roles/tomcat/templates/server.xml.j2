@@ -1,0 +1,8 @@
+<Server port="8005" shutdown="SHUTDOWN">
+  <Service name="Catalina">
+    <Connector port="{{ tomcat_port | default(8080) }}"
+               protocol="org.apache.coyote.http11.Http11NioProtocol"
+               maxThreads="200"
+               connectionTimeout="20000" />
+  </Service>
+</Server>

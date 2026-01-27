@@ -1,0 +1,12 @@
+- name: Install Java and Tomcat
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - java-11-openjdk
+    - tomcat
+
+- name: Enable Tomcat service
+  service:
+    name: "{{ tomcat_service }}"
+    enabled: yes

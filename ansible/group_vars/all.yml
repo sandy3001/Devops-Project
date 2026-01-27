@@ -1,0 +1,3 @@
+patch_script_path: /usr/local/bin/patch.sh
+backup_dir: /opt/patch-backup
+max_retries: 3
