@@ -1,0 +1,105 @@
+@Library('jenkins-shared-lib@main') _
+
+pipeline {
+    agent { label 'docker-agent' }
+
+    tools {
+        maven "MAVEN3"
+        jdk "OracleJDK11"
+    }
+
+    triggers {
+        githubPush()
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        skipDefaultCheckout()
+    }
+
+    environment {
+        AWS_REGION      = "us-east-1"
+        AWS_ACCOUNT_ID  = "992382545586"
+        ECR_REGISTRY    = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        REGISTRY_CREDS  = "ecr:us-east-1:awsiam"
+        APP_DIR         = "App"
+        SLACK_CHANNEL   = "#devops-builds"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/sandy3001/Devops-Project.git'
+            }
+        }
+
+        stage('Build & Test App') {
+            parallel {
+
+                stage('Maven Build') {
+                    steps {
+                        sh "cd ${APP_DIR} && mvn clean package -DskipTests"
+                    }
+                }
+
+                stage('Unit Tests') {
+                    steps {
+                        sh "cd ${APP_DIR} && mvn test"
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build & Push (Parallel)') {
+            steps {
+                script {
+
+                    def images = [
+                        app : "docker/app",
+                        db  : "docker/db",
+                        mc  : "docker/mc",
+                        rmq : "docker/rmq"
+                    ]
+
+                    def parallelStages = [:]
+
+                    images.each { imageName, imagePath ->
+                        parallelStages[imageName] = {
+                            stage("Build & Push ${imageName}") {
+
+                                def fullImageName = "${ECR_REGISTRY}/vprofile-${imageName}"
+
+                                def dockerImage = docker.build(
+                                    "${fullImageName}:${BUILD_NUMBER}",
+                                    imagePath
+                                )
+
+                                docker.withRegistry("https://${ECR_REGISTRY}", REGISTRY_CREDS) {
+                                    dockerImage.push("${BUILD_NUMBER}")
+                                    dockerImage.push("latest")
+                                }
+                            }
+                        }
+                    }
+
+                    parallel parallelStages
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            notifySlack("SUCCESS", "All Docker images built & pushed")
+        }
+        failure {
+            notifySlack("FAILED", "Docker build or push failed")
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
