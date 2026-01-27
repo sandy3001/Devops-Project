@@ -1,7 +1,0 @@
-- name: Patch all servers safely
-  hosts: all
-  serial: 2
-  gather_facts: yes
-
-  roles:
-    - patching

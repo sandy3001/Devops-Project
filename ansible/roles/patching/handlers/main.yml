@@ -1,2 +1,0 @@
-- name: run patch
-  shell: "{{ patch_script_path }}"
